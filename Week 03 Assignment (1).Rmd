@@ -1,0 +1,100 @@
+---
+title: "Week 03 Assignment"
+output: html_notebook
+---
+For this week’s application assignment, please complete the following tasks using the data provided in clinic.xls (see Week04 folder)
+
+1. Tabulate the execution times of each of the individual approaches for computing distance in Python (i.e., run the shared code on your computer, note the times, and tabulate them).
+
+2. Next, replicate the for-loop based approach (the first one) and two different ways to make that version more efficient, in R. Profile these three approaches, and tabulate the results.
+
+3. Based on the computational efficiency of implementations in Python and R, which one would you prefer? Based on a consideration of implementation (i.e., designing and implementing the code), which approach would you prefer? Taking both of these (run time and coding time), which approach would you prefer?
+
+4. Identify and describe one or two other considerations, in addition to these two, in determining which of the two environments – Python or R – is preferable to you.
+
+```{r}
+install.packages("readxl")
+```
+
+```{r}
+library(readxl)
+```
+
+```{r}
+df <- read.csv("/Users/jacksparrow/Desktop/Assignment/clinics (1).csv", sep="|", header=TRUE)
+head(df)
+```
+```{r}
+library(readr)
+library(geosphere)
+```
+
+```{r}
+cat("Loading dataset...\n")
+data <- read_delim("clinics (1).csv", delim = "|")
+```
+```{r}
+# Validate and clean dataset
+data <- data[!is.na(data$locLat) & !is.na(data$locLong), ]  
+data$locLat <- as.numeric(data$locLat)
+data$locLong <- as.numeric(data$locLong)
+data <- data[data$locLat >= -90 & data$locLat <= 90 & data$locLong >= -180 & data$locLong <= 180, ]  # Keep valid coordinates
+```
+
+```{r}
+# Approach 1: For-loop based distance calculation
+compute_distances_for_loop <- function(data) {
+  cat("Computing distances using for-loop...\n")
+  distances <- c()
+  for (i in 1:nrow(data)) {
+    for (j in (i + 1):nrow(data)) {
+      coord1 <- c(data$locLong[i], data$locLat[i])
+      coord2 <- c(data$locLong[j], data$locLat[j])
+      distance <- distHaversine(coord1, coord2) / 1000  # Convert to kilometers
+      distances <- c(distances, distance)
+    }
+  }
+  return(distances)
+}
+```
+
+```{r}
+# Measure execution time for for-loop approach
+start_time <- Sys.time()
+distances_for_loop <- compute_distances_for_loop(data)
+end_time <- Sys.time()
+loop_time <- end_time - start_time
+```
+```{r}
+# Approach 2: Apply-based distance calculation
+compute_distances_apply <- function(data) {
+  cat("Computing distances using apply function...\n")
+  coords <- data[, c("locLong", "locLat")]
+  distances <- outer(1:nrow(coords), 1:nrow(coords), Vectorize(function(i, j) {
+    if (i < j) {
+      distHaversine(coords[i, ], coords[j, ]) / 1000  
+    } else {
+      NA
+    }
+  }))
+  return(na.omit(as.vector(distances)))
+}
+```
+
+```{r}
+# Measure execution time for apply approach
+start_time <- Sys.time()
+distances_apply <- compute_distances_apply(data)
+end_time <- Sys.time()
+apply_time <- end_time - start_time
+```
+
+```{r}
+#tabulate and print results
+cat("tabulating results...\n")
+results <- data.frame(
+  Approach = c("For-loop", "Apply"),
+  Time = c(loop_time, apply_time)
+)
+print(results)
+```
